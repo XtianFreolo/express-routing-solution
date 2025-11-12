@@ -1,91 +1,106 @@
 const express = require('express');
+const fs = require('fs');
 const app = express();
 const ExpressError = require('./expressError');
 
-const { convertAndValidateNumsArray, findMode, findMean, findMedian } = require('./helpers');
 
-app.get('/mean', function(req, res, next) {
+const {
+  convertAndValidateNumsArray,
+  findMean,
+  findMedian,
+  findMode
+} = require('./helpers');
+
+
+function sendResponse(req, res, data) {
+  const accept = req.headers.accept || 'application/json';
+
+  if (accept.includes('text/html')) {
+    let html = `<h1>Operation: ${data.operation}</h1>`;
+    if (data.operation === 'all') {
+      html += `<p>Mean: ${data.mean}</p><p>Median: ${data.median}</p><p>Mode: ${data.mode}</p>`;
+    } else {
+      html += `<p>Value: ${data.value}</p>`;
+    }
+    return res.send(html);
+  } else {
+    return res.json(data);
+  }
+}
+
+
+function saveResult(result) {
+  const dataToSave = { ...result, timestamp: new Date().toISOString() };
+  fs.writeFileSync('results.json', JSON.stringify(dataToSave, null, 2));
+}
+
+
+function parseNums(req, res, next) {
   if (!req.query.nums) {
-    throw new ExpressError('You must pass a query key of nums with a comma-separated list of numbers.', 400)
+    throw new ExpressError('nums are required.', 400);
   }
-  let numsAsStrings = req.query.nums.split(',');
-  // check if anything bad was put in
-  let nums = convertAndValidateNumsArray(numsAsStrings);
+  const numsAsStrings = req.query.nums.split(',');
+  const nums = convertAndValidateNumsArray(numsAsStrings);
   if (nums instanceof Error) {
-    throw new ExpressError(nums.message);
+    throw new ExpressError(`${numsAsStrings[nums.indexOf(NaN)]} is not a number.`, 400);
   }
+  req.nums = nums;
+  next();
+}
 
+app.get('/mean', parseNums, (req, res, next) => {
+  const value = findMean(req.nums);
+  const result = { operation: 'mean', value };
 
-  let result = {
-    operation: "mean",
-    result: findMean(nums)
-  }
+  if (req.query.save === 'true') saveResult(result);
 
-  return res.send(result);
+  sendResponse(req, res, result);
 });
 
-app.get('/median', function(req, res, next) {
-  if (!req.query.nums) {
-    throw new ExpressError('You must pass a query key of nums with a comma-separated list of numbers.', 400)
-  }
-  let numsAsStrings = req.query.nums.split(',');
-  // check if anything bad was put in
-  let nums = convertAndValidateNumsArray(numsAsStrings);
-  if (nums instanceof Error) {
-    throw new ExpressError(nums.message);
-  }
+app.get('/median', parseNums, (req, res, next) => {
+  const value = findMedian(req.nums);
+  const result = { operation: 'median', value };
 
-  let result = {
-    operation: "median",
-    result: findMedian(nums)
-  }
+  if (req.query.save === 'true') saveResult(result);
 
-  return res.send(result);
-  
+  sendResponse(req, res, result);
 });
 
-app.get('/mode', function(req, res, next) {
-  if (!req.query.nums) {
-    throw new ExpressError('You must pass a query key of nums with a comma-separated list of numbers.', 400)
-  }
-  let numsAsStrings = req.query.nums.split(',');
-  // check if anything bad was put in
-  let nums = convertAndValidateNumsArray(numsAsStrings);
-  if (nums instanceof Error) {
-    throw new ExpressError(nums.message);
-  }
+app.get('/mode', parseNums, (req, res, next) => {
+  const value = findMode(req.nums);
+  const result = { operation: 'mode', value };
 
-  let result = {
-    operation: "mode",
-    result: findMode(nums)
-  }
+  if (req.query.save === 'true') saveResult(result);
 
-  return res.send(result);
-
- 
+  sendResponse(req, res, result);
 });
 
-/** general error handler */
+app.get('/all', parseNums, (req, res, next) => {
+  const mean = findMean(req.nums);
+  const median = findMedian(req.nums);
+  const mode = findMode(req.nums);
+  const result = { operation: 'all', mean, median, mode };
 
-app.use(function (req, res, next) {
-  const err = new ExpressError("Not Found",404);
+  if (req.query.save === 'true') saveResult(result);
 
-  // pass the error to the next piece of middleware
-  return next(err);
+  sendResponse(req, res, result);
 });
 
-/** general error handler */
 
-app.use(function (err, req, res, next) {
+app.use((req, res, next) => {
+  const err = new ExpressError('Not Found', 404);
+  next(err);
+});
+
+
+app.use((err, req, res, next) => {
   res.status(err.status || 500);
-
   return res.json({
-    error: err,
-    message: err.message
+    message: err.message,
+    status: err.status || 500
   });
 });
 
-
-app.listen(3000, function() {
-  console.log(`Server starting on port 3000`);
+app.listen(3000, () => {
+  console.log('Server starting on port 3000');
 });

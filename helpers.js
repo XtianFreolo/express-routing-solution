@@ -3,14 +3,14 @@
  * @param {Array} arr any array
  */
 function createFrequencyCounter(arr) {
-  return arr.reduce(function(acc, next) {
+  return arr.reduce(function (acc, next) {
     acc[next] = (acc[next] || 0) + 1;
     return acc;
   }, {});
 }
 
 /**
- * Find the most common element in the array
+ 
  * @param {Array} arr any array
  */
 function findMode(arr) {
@@ -30,9 +30,9 @@ function findMode(arr) {
 }
 
 /**
- * Attempt to convert an array of strings to an array of numbers
+
  * @param {Array} numsAsStrings array of strings
- * @returns {Array|Error} an array or an error object
+ * @returns {Array} array of numbers
  */
 function convertAndValidateNumsArray(numsAsStrings) {
   let result = [];
@@ -41,45 +41,35 @@ function convertAndValidateNumsArray(numsAsStrings) {
     let valToNumber = Number(numsAsStrings[i]);
 
     if (Number.isNaN(valToNumber)) {
-      return new Error(
-        `The value '${numsAsStrings[i]}' at index ${i} is not a valid number.`
-      );
+      throw new Error(`${numsAsStrings[i]} is not a number.`);
     }
 
     result.push(valToNumber);
   }
+
   return result;
 }
 
-function findMean(nums){
-  if(nums.length === 0) return 0;
-  return nums.reduce(function (acc, cur) {
-    return acc + cur;
-  }) / nums.length
+function findMean(nums) {
+  if (nums.length === 0) return 0;
+  return nums.reduce((acc, cur) => acc + cur, 0) / nums.length;
 }
 
-function findMedian(nums){
-  // sort and get the middle element
-
+function findMedian(nums) {
   nums.sort((a, b) => a - b);
-
-  let middleIndex = Math.floor(nums.length / 2);
-  let median;
+  const middleIndex = Math.floor(nums.length / 2);
 
   if (nums.length % 2 === 0) {
-    median = (nums[middleIndex] + nums[middleIndex - 1]) / 2;
+    return (nums[middleIndex - 1] + nums[middleIndex]) / 2;
   } else {
-    median = nums[middleIndex];
+    return nums[middleIndex];
   }
-  return median
 }
-
-
 
 module.exports = {
   createFrequencyCounter,
   findMean,
   findMedian,
   findMode,
-  convertAndValidateNumsArray
+  convertAndValidateNumsArray,
 };
